@@ -3,4 +3,36 @@
 -- Matricola #260321  --
 ------------------------
 
+------------------------------------------------------
+-- Specifiche del protocollo:                       --
+-- http://www.sti.uniurb.it/aldini/mvss/2016s2a.pdf --
+------------------------------------------------------
 
+MODULE main
+
+VAR
+
+-- gr    "Goods Request"
+-- eg    "Encrypted Goods"
+-- epo   "Electronic Payment Order"
+-- ps    "Payment Slip"
+-- ps_bm "Payment Slip (da banca a mercante)"
+-- ps_m  "Payment Slip (da mercante a cliente)"
+-- np    "No Payment"
+-- nr    "No Record"
+-- te    "Transaction Enquiry"
+-- eepo  "Endorsed EPO"
+
+-- Parti coinvolte nella transazione
+
+cliente  : {idle,gr};
+mercante : {idle,gr};
+banca 	 : {idle,epo};
+
+ASSIGN
+
+-- Inizializzazione
+
+init(cliente)  := idle;
+init(mercante) := idle;
+init(banca)    := idle;
