@@ -1,7 +1,13 @@
 ------------------------
+-- Progetto MVSS      -- 
 -- Davide Cortellucci --
 -- Matricola #260321  --
 ------------------------
+
+--------------------------------------
+-- Model Checking:		    --
+-- The NetBill Transaction Protocol --
+--------------------------------------
 
 ------------------------------------------------------
 -- Specifiche del protocollo:                       --
@@ -10,24 +16,37 @@
 
 MODULE main
 
+--------------------
+-- Lista di stati --
+--------------------
+
+-- pr:		 "Price Request"
+-- pq:		 "Price Quote"
+-- gr:	    	 "Goods Request"
+-- eg:	    	 "Encrypted Goods"
+-- epo:		 "Electronic Payment Order"
+-- ps:		 "Payment Slip"
+-- ps_nm: 	 "Payment Slip (da NetBill a mercante)"
+-- ps_mc:	 "Payment Slip (da mercante a cliente)"
+-- np:   	 "No Payment"
+-- nr:   	 "No Record"
+-- te:   	 "Transaction Enquiry"
+-- eepo:  	 "Endorsed EPO"
+-- completato:	 Transazione andata a buon fine
+-- errore:	 Transazione non completata
+
 VAR
 
--- gr    "Goods Request"
--- eg    "Encrypted Goods"
--- epo   "Electronic Payment Order"
--- ps    "Payment Slip"
--- ps_bm "Payment Slip (da banca a mercante)"
--- ps_m  "Payment Slip (da mercante a cliente)"
--- np    "No Payment"
--- nr    "No Record"
--- te    "Transaction Enquiry"
--- eepo  "Endorsed EPO"
+netbill_decision : boolean;
+epoid : boolean;
+signature: boolean;
+state : {pr, pq, gr, eg, epo, ps, ps_nm, ps_mc, np, nr, te, eepo, completato, errore}
 
 -- Parti coinvolte nella transazione
 
 cliente  : {idle,gr};
 mercante : {idle,gr};
-banca 	 : {idle,epo};
+netbill	 : {idle,epo};
 
 ASSIGN
 
@@ -35,4 +54,4 @@ ASSIGN
 
 init(cliente)  := idle;
 init(mercante) := idle;
-init(banca)    := idle;
+init(netbill)  := idle;
