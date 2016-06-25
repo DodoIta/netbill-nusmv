@@ -26,32 +26,41 @@ MODULE main
 -- eg:	    	 "Encrypted Goods"
 -- epo:		 "Electronic Payment Order"
 -- ps:		 "Payment Slip"
--- ps_nm: 	 "Payment Slip (da NetBill a mercante)"
--- ps_mc:	 "Payment Slip (da mercante a cliente)"
 -- np:   	 "No Payment"
 -- nr:   	 "No Record"
 -- te:   	 "Transaction Enquiry"
 -- eepo:  	 "Endorsed EPO"
--- completato:	 Transazione andata a buon fine
--- errore:	 Transazione non completata
+-- ok:		 Transazione andata a buon fine
+-- error:	 Transazione non completata
 
 VAR
 
+-- Decisione di NetBill sulla transazione
 netbill_decision : boolean;
+
+-- Identifica univocamente la transazione, da esso dipende l'esito della transazione
 epoid : boolean;
-signature: boolean;
-state : {pr, pq, gr, eg, epo, ps, ps_nm, ps_mc, np, nr, te, eepo, completato, errore}
 
--- Parti coinvolte nella transazione
+-- Checksum sui beni
+cc : boolean;
 
-cliente  : {idle,gr};
-mercante : {idle,gr};
-netbill	 : {idle,epo};
+-- Stati delle parti coinvolte nella transazione
+
+cliente  : {pr, gr, epo, ok, error};
+mercante : {idle, pq, eg, eepo, te, np};
+netbill	 : {idle, te, np};
 
 ASSIGN
 
 -- Inizializzazione
 
-init(cliente)  := idle;
+init(cliente)  := pr;
 init(mercante) := idle;
 init(netbill)  := idle;
+
+-- Cliente
+
+next (cliente) :=
+case
+	cliente = pr && mercante = pq : cliente = gr;
+	cliente = gr &&
