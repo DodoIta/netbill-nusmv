@@ -25,11 +25,9 @@ MODULE main
 -- gr:	    	 "Goods Request"
 -- eg:	    	 "Encrypted Goods"
 -- epo:		 "Electronic Payment Order"
--- ps:		 "Payment Slip"
--- np:   	 "No Payment"
--- nr:   	 "No Record"
--- te:   	 "Transaction Enquiry"
 -- eepo:  	 "Endorsed EPO"
+-- np:   	 "No Payment"
+-- tr:   	 "Transaction Result"
 -- ok:		 Transazione andata a buon fine
 -- error:	 Transazione non completata
 
@@ -51,8 +49,8 @@ m_bid : boolean;
 -- Stati delle parti coinvolte nella transazione
 
 cliente  : {pr, gr, epo, ok, error};
-mercante : {idle, pq, eg, eepo, te, np};
-netbill	 : {idle, te, np};
+mercante : {idle, pq, eg, eepo, tr, np};
+netbill	 : {idle, tr, np};
 
 ASSIGN
 
@@ -62,7 +60,7 @@ init (cliente)  := pr;
 init (mercante) := idle;
 init (netbill)  := idle;
 
-init (netbill_decision)	:= {TRUE; FALSE};
+init (nb_decision)	:= {TRUE; FALSE};
 init (epoid) 		:= {TRUE; FALSE};
 init (cc)		:= {TRUE; FALSE};
 init (c_bid)		:= {TRUE; FALSE};
@@ -76,7 +74,8 @@ case
 	cliente = pr && mercante = pq && c_bid = TRUE	: cliente = gr;
 	cc = TRUE && mercante = eg 	: cliente = epo;
 	cc = FAlSE && mercante = eg	: cliente = error;
-	mercante = te			: cliente = ok;
+	mercante = tr			: cliente = ok;
+	mercante = np			: cliente = error;
 	TRUE 				: state;
 esac;
 
@@ -84,5 +83,21 @@ esac;
 
 next (mercante) :=
 case
-	cliente = pr && m_bid = FALSE 	: cliente = error;
+	cliente = pr && m_bid = FALSE 	: mercante = error;
 	cliente = pr && m_bid = TRUE 	: mercante = pq;
+	cliente = gr			: mercante = eg;
+	cliente = epo			: mercante = eepo;
+	netbill = tr			: mercante = tr;
+	TRUE 				: state;
+esac
+
+-- NetBill
+
+next (netbill) :=
+case
+	mercante = eepo && epoid = FALSE 	: netbill = error;
+	mercante = eepo && epoid = TRUE  	: netbill = tr;
+	mercante = eepo && nb_decision = FALSE	: netbill = error;
+	mercante = eepo && nb_decision = TRUE	: netbill = error;
+	TRUE 				: state;
+esac
