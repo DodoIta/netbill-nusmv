@@ -44,6 +44,10 @@ epoid : boolean;
 -- Checksum sui beni
 cc : boolean;
 
+-- Esito dell'accordo sul prezzo dei beni
+c_bid : boolean;
+m_bid : boolean;
+
 -- Stati delle parti coinvolte nella transazione
 
 cliente  : {pr, gr, epo, ok, error};
@@ -54,13 +58,31 @@ ASSIGN
 
 -- Inizializzazione
 
-init(cliente)  := pr;
-init(mercante) := idle;
-init(netbill)  := idle;
+init (cliente)  := pr;
+init (mercante) := idle;
+init (netbill)  := idle;
+
+init (netbill_decision)	:= {TRUE; FALSE};
+init (epoid) 		:= {TRUE; FALSE};
+init (cc)		:= {TRUE; FALSE};
+init (c_bid)		:= {TRUE; FALSE};
+init (m_bid)		:= {TRUE; FALSE};
 
 -- Cliente
 
 next (cliente) :=
 case
-	cliente = pr && mercante = pq : cliente = gr;
-	cliente = gr &&
+	cliente = pr && mercante = pq && c_bid = FALSE	: cliente = error;
+	cliente = pr && mercante = pq && c_bid = TRUE	: cliente = gr;
+	cc = TRUE && mercante = eg 	: cliente = epo;
+	cc = FAlSE && mercante = eg	: cliente = error;
+	mercante = te			: cliente = ok;
+	TRUE 				: state;
+esac;
+
+-- Mercante
+
+next (mercante) :=
+case
+	cliente = pr && m_bid = FALSE 	: cliente = error;
+	cliente = pr && m_bid = TRUE 	: mercante = pq;
