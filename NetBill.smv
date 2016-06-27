@@ -26,31 +26,30 @@ MODULE main
 -- eg:	    	 "Encrypted Goods"
 -- epo:		 "Electronic Payment Order"
 -- eepo:  	 "Endorsed EPO"
--- np:   	 "No Payment"
--- tr:   	 "Transaction Result"
+-- sr_nm:	 "Signed Result" (da NetBill a mercante)
+-- sr_mc:	 "Signed Result" (da mercante a cliente)
 -- ok:		 Transazione andata a buon fine
 -- error:	 Transazione non completata
 
 VAR
 
+-- Accordo sul prezzo dei beni
+bid : boolean;
+
 -- Decisione di NetBill sulla transazione
 netbill_decision : boolean;
 
--- Identifica univocamente la transazione, da esso dipende l'esito della transazione
+-- Identifica univocamente la transazione, evita replay attacks
 epoid : boolean;
 
--- Checksum sui beni
+-- Checksum sui beni da mercante a cliente
 cc : boolean;
-
--- Esito dell'accordo sul prezzo dei beni
-c_bid : boolean;
-m_bid : boolean;
 
 -- Stati delle parti coinvolte nella transazione
 
 cliente  : {pr, gr, epo, ok, error};
-mercante : {idle, pq, eg, eepo, tr, np};
-netbill	 : {idle, tr, np};
+mercante : {idle, pq, eg, eepo, sr_mc, error};
+netbill	 : {idle, sr_nm, error};
 
 ASSIGN
 
@@ -60,44 +59,58 @@ init (cliente)  := pr;
 init (mercante) := idle;
 init (netbill)  := idle;
 
+init (bid) 		:= {TRUE, FALSE};
 init (nb_decision)	:= {TRUE; FALSE};
 init (epoid) 		:= {TRUE; FALSE};
 init (cc)		:= {TRUE; FALSE};
-init (c_bid)		:= {TRUE; FALSE};
-init (m_bid)		:= {TRUE; FALSE};
 
 -- Cliente
 
 next (cliente) :=
 case
-	cliente = pr && mercante = pq && c_bid = FALSE	: cliente = error;
-	cliente = pr && mercante = pq && c_bid = TRUE	: cliente = gr;
-	cc = TRUE && mercante = eg 	: cliente = epo;
-	cc = FAlSE && mercante = eg	: cliente = error;
-	mercante = tr			: cliente = ok;
-	mercante = np			: cliente = error;
-	TRUE 				: state;
+	cliente = pr & mercante = pq 	: gr;
+	mercante = eg & cc = FALSE	: error;
+	mercante = eg & cc = TRUE	: epo;
+	mercante = sr_mc		: ok;
+	mercante = error		: error;
+	TRUE 				: cliente;
 esac;
 
 -- Mercante
 
 next (mercante) :=
 case
-	cliente = pr && m_bid = FALSE 	: mercante = error;
-	cliente = pr && m_bid = TRUE 	: mercante = pq;
-	cliente = gr			: mercante = eg;
-	cliente = epo			: mercante = eepo;
-	netbill = tr			: mercante = tr;
-	TRUE 				: state;
+	cliente = pr & bid = FALSE	: error;
+	cliente = pr & bid = TRUE	: pq;
+	cliente = gr			: eg;
+	cliente = epo			: eepo;
+	netbill = error			: error;
+	netbill = sr_nm			: sr_mc;
+	TRUE 				: mercante;
 esac
 
 -- NetBill
 
 next (netbill) :=
 case
-	mercante = eepo && epoid = FALSE 	: netbill = error;
-	mercante = eepo && epoid = TRUE  	: netbill = tr;
-	mercante = eepo && nb_decision = FALSE	: netbill = error;
-	mercante = eepo && nb_decision = TRUE	: netbill = error;
-	TRUE 				: state;
+	mercante = eepo & epoid = FALSE 	: error;
+	mercante = eepo & epoid = TRUE  	: sr_nm;
+	mercante = eepo & nb_decision = FALSE	: error;
+	mercante = eepo & nb_decision = TRUE	: error;
+	TRUE 					: netbill;
 esac
+
+---------------
+-- Proprietà --
+---------------
+
+-- Per qualsiasi cammino la transazione termina
+CTLSPEC AG (cliente = ok | cliente = error);
+
+-- In almeno un cammino la transazione va a buon fine
+CTLSPEC EF (mercante = sr_mc -> cliente = ok)
+
+-- Se cliente e mercante non si accordano sul prezzo, la transazione non va a buon fine
+
+
+-- yolo
