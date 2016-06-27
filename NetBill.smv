@@ -14,8 +14,6 @@
 -- http://www.sti.uniurb.it/aldini/mvss/2016s2a.pdf --
 ------------------------------------------------------
 
-MODULE main
-
 --------------------
 -- Lista di stati --
 --------------------
@@ -31,10 +29,70 @@ MODULE main
 -- ok:		 Transazione andata a buon fine
 -- error:	 Transazione non completata
 
+------------
+-- Moduli --
+------------
+
+-- Cliente
+
+MODULE cliente(m)
+
+VAR
+
+-- Checksum sui beni da mercante a cliente
+cc : boolean;
+
+-- Stati del cliente
+state : {pr, gr, epo, ok, error};
+
+ASSIGN
+
+init (cc)	:= {TRUE, FALSE};
+init (state)    := pr;
+
+next (state) :=
+case
+	state = pr & m = pq 	: gr;
+	m = eg & cc = FALSE	: error;
+	m = eg & cc = TRUE	: epo;
+	m = sr_mc		: ok;
+	m = error		: error;
+	TRUE 			: state;
+esac;
+
+-- Mercante
+
+MODULE mercante(c, n)
+
 VAR
 
 -- Accordo sul prezzo dei beni
 bid : boolean;
+
+-- Stati del mercante
+state : {idle, pq, eg, eepo, sr_mc, error};
+
+ASSIGN
+
+init (bid)   := {TRUE, FALSE};
+init (state) := idle;
+
+next (state) :=
+case
+	state = pr & bid = FALSE	: error;
+	c = pr & bid = TRUE		: pq;
+	c = gr				: eg;
+	c = epo				: eepo;
+	n = error			: error;
+	n = sr_nm			: sr_mc;
+	TRUE 				: state;
+esac;
+
+-- NetBill
+
+MODULE netbill(m)
+
+VAR
 
 -- Decisione di NetBill sulla transazione
 nb_decision : boolean;
@@ -42,78 +100,47 @@ nb_decision : boolean;
 -- Identifica univocamente la transazione, evita replay attacks
 epoid : boolean;
 
--- Checksum sui beni da mercante a cliente
-cc : boolean;
-
--- Stati delle parti coinvolte nella transazione
-
-cliente  : {pr, gr, epo, ok, error};
-mercante : {idle, pq, eg, eepo, sr_mc, error};
-netbill	 : {idle, sr_nm, error};
+-- Stati di NetBill
+state	 : {idle, sr_nm, error};
 
 ASSIGN
 
--- Inizializzazione
-
-init (cliente)  := pr;
-init (mercante) := idle;
-init (netbill)  := idle;
-
-init (bid) 		:= {TRUE, FALSE};
 init (nb_decision)	:= {TRUE, FALSE};
 init (epoid) 		:= {TRUE, FALSE};
-init (cc)		:= {TRUE, FALSE};
+init (state)	  	:= idle;
 
--- Cliente
-
-next (cliente) :=
+next (state) :=
 case
-	cliente = pr & mercante = pq 	: gr;
-	mercante = eg & cc = FALSE	: error;
-	mercante = eg & cc = TRUE	: epo;
-	mercante = sr_mc		: ok;
-	mercante = error		: error;
-	TRUE 				: cliente;
-esac;
-
--- Mercante
-
-next (mercante) :=
-case
-	cliente = pr & bid = FALSE	: error;
-	cliente = pr & bid = TRUE	: pq;
-	cliente = gr			: eg;
-	cliente = epo			: eepo;
-	netbill = error			: error;
-	netbill = sr_nm			: sr_mc;
-	TRUE 				: mercante;
-esac;
-
--- NetBill
-
-next (netbill) :=
-case
-	mercante = eepo & 
+	m = eepo & 
 		(epoid = FALSE | nb_decision = FALSE) 	: error;
-	mercante = eepo & 
+	m = eepo & 
 		(epoid = TRUE & nb_decision = TRUE)	: sr_nm;
-	TRUE 						: netbill;
+	TRUE 						: state;
 esac;
+
+MODULE main
+
+VAR
+
+c : consumer (m);
+m : merchant (c, n);
+n : netbill (m);
 
 --------------------
 -- Model Checking --
 --------------------
 
 -- Per qualsiasi cammino, alla fine la transazione termina
-CTLSPEC EF (cliente = ok | cliente = error);
+CTLSPEC AG (EF (cliente = ok | cliente = error));
+
+-- Se la transazione è avvenuta con successo, non può essere segnalato errore e viceversa
+CTLSPEC EF (cliente = ok <-> !(cliente = error));
 
 -- Se Netbill o il mercante segnalano un qualsiasi errore, la transazione non andrà mai a buon fine
-CTLSPEC AF ((netbill = error | mercante = error) -> cliente = error)
+CTLSPEC AF ((netbill = error | mercante = error) -> cliente = error);
 
 -- Se cliente e mercante non si accordano sul prezzo, la transazione non va a buon fine
-CTLSPEC EF (bid = FALSE -> cliente = error);
-
--- 
+CTLSPEC EF ((bid = FALSE | nb_decision = FALSE | cc = FALSE) -> cliente = error);
 
 -- Se NetBill segnala un errore qualsiasi, il cliente non riceve la chiave e la transazione non va a buon fine
-CTLSPEC AF ((cliente = eepo & nb_decision = FALSE) -> !(cliente = ok))
+CTLSPEC AF ((cliente = eepo & nb_decision = FALSE) -> !(cliente = ok));
