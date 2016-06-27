@@ -122,8 +122,8 @@ MODULE main
 
 VAR
 
-c : consumer (m);
-m : merchant (c, n);
+c : cliente (m);
+m : mercante (c, n);
 n : netbill (m);
 
 --------------------
@@ -131,16 +131,16 @@ n : netbill (m);
 --------------------
 
 -- Per qualsiasi cammino, alla fine la transazione termina
-CTLSPEC AG (EF (cliente = ok | cliente = error));
+CTLSPEC AG (EF (c.state = ok | c.state = error));
 
 -- Se la transazione è avvenuta con successo, non può essere segnalato errore e viceversa
-CTLSPEC EF (cliente = ok <-> !(cliente = error));
+--CTLSPEC EF (cliente = ok <-> !(cliente = error));
 
 -- Se Netbill o il mercante segnalano un qualsiasi errore, la transazione non andrà mai a buon fine
-CTLSPEC AF ((netbill = error | mercante = error) -> cliente = error);
+-- AF ((netbill = error | mercante = error) -> cliente = error);
 
 -- Se cliente e mercante non si accordano sul prezzo, la transazione non va a buon fine
-CTLSPEC EF ((bid = FALSE | nb_decision = FALSE | cc = FALSE) -> cliente = error);
+--CTLSPEC EF ((bid = FALSE | nb_decision = FALSE | cc = FALSE) -> cliente = error);
 
 -- Se NetBill segnala un errore qualsiasi, il cliente non riceve la chiave e la transazione non va a buon fine
-CTLSPEC AF ((cliente = eepo & nb_decision = FALSE) -> !(cliente = ok));
+--CTLSPEC AF ((cliente = eepo & nb_decision = FALSE) -> !(cliente = ok));
