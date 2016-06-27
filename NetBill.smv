@@ -37,7 +37,7 @@ VAR
 bid : boolean;
 
 -- Decisione di NetBill sulla transazione
-netbill_decision : boolean;
+nb_decision : boolean;
 
 -- Identifica univocamente la transazione, evita replay attacks
 epoid : boolean;
@@ -60,9 +60,9 @@ init (mercante) := idle;
 init (netbill)  := idle;
 
 init (bid) 		:= {TRUE, FALSE};
-init (nb_decision)	:= {TRUE; FALSE};
-init (epoid) 		:= {TRUE; FALSE};
-init (cc)		:= {TRUE; FALSE};
+init (nb_decision)	:= {TRUE, FALSE};
+init (epoid) 		:= {TRUE, FALSE};
+init (cc)		:= {TRUE, FALSE};
 
 -- Cliente
 
@@ -87,30 +87,33 @@ case
 	netbill = error			: error;
 	netbill = sr_nm			: sr_mc;
 	TRUE 				: mercante;
-esac
+esac;
 
 -- NetBill
 
 next (netbill) :=
 case
-	mercante = eepo & epoid = FALSE 	: error;
-	mercante = eepo & epoid = TRUE  	: sr_nm;
-	mercante = eepo & nb_decision = FALSE	: error;
-	mercante = eepo & nb_decision = TRUE	: error;
-	TRUE 					: netbill;
-esac
+	mercante = eepo & 
+		(epoid = FALSE | nb_decision = FALSE) 	: error;
+	mercante = eepo & 
+		(epoid = TRUE & nb_decision = TRUE)	: sr_nm;
+	TRUE 						: netbill;
+esac;
 
----------------
--- Proprietà --
----------------
+--------------------
+-- Model Checking --
+--------------------
 
--- Per qualsiasi cammino la transazione termina
-CTLSPEC AG (cliente = ok | cliente = error);
+-- Per qualsiasi cammino, alla fine la transazione termina
+CTLSPEC EF (cliente = ok | cliente = error);
 
--- In almeno un cammino la transazione va a buon fine
-CTLSPEC EF (mercante = sr_mc -> cliente = ok)
+-- Se Netbill o il mercante segnalano un qualsiasi errore, la transazione non andrà mai a buon fine
+CTLSPEC AF ((netbill = error | mercante = error) -> cliente = error)
 
 -- Se cliente e mercante non si accordano sul prezzo, la transazione non va a buon fine
+CTLSPEC EF (bid = FALSE -> cliente = error);
 
+-- 
 
--- yolo
+-- Se NetBill segnala un errore qualsiasi, il cliente non riceve la chiave e la transazione non va a buon fine
+CTLSPEC AF ((cliente = eepo & nb_decision = FALSE) -> !(cliente = ok))
