@@ -14,21 +14,6 @@
 -- http://www.sti.uniurb.it/aldini/mvss/2016s2a.pdf --
 ------------------------------------------------------
 
---------------------
--- Lista di stati --
---------------------
-
--- pr:		 "Price Request"
--- pq:		 "Price Quote"
--- gr:	    	 "Goods Request"
--- eg:	    	 "Encrypted Goods"
--- epo:		 "Electronic Payment Order"
--- eepo:  	 "Endorsed EPO"
--- sr_nm:	 "Signed Result" (da NetBill a mercante)
--- sr_mc:	 "Signed Result" (da mercante a cliente)
--- ok:		 Transazione andata a buon fine
--- error:	 Transazione non completata
-
 ------------
 -- Moduli --
 ------------
@@ -42,15 +27,24 @@ VAR
 -- Checksum sui beni da mercante a cliente
 cc : boolean;
 
--- Stati del cliente
+--------------------------------
+-- Lista di stati del cliente --
+--------------------------------
+
+-- pr:		 "Price Request" (stato iniziale)
+-- gr:	    	 "Goods Request"
+-- epo:		 "Electronic Payment Order"
+-- ok:		 Transazione andata a buon fine (cliente riceve la chiave per decrittare i beni)
+-- error:	 Esito della transazione negativo
+
 state : {pr, gr, epo, ok, error};
 
 ASSIGN
 
-init (cc)	:= {TRUE, FALSE};
---next (cc)	:= cc;
+init (cc) := {TRUE, FALSE};
+next (cc) := cc;
 
-init (state)    := pr;
+init (state) := pr;
 next (state) :=
 case
 	m.state = error			: error;
@@ -70,19 +64,29 @@ VAR
 -- Accordo sul prezzo dei beni
 bid : boolean;
 
--- Stati del mercante
+---------------------------------
+-- Lista di stati del mercante --
+---------------------------------
+
+-- idle:	 Stato iniziale (in attesa)
+-- pq:		 "Price Quote"
+-- eg:	    	 "Encrypted Goods"
+-- eepo:  	 "Endorsed EPO"
+-- sr_mc:	 "Signed Result" (da mercante a cliente)
+-- error:	 Errore nella transazione
+
 state : {idle, pq, eg, eepo, sr_mc, error};
 
 ASSIGN
 
-init (bid)	:= {TRUE, FALSE};
---next (bid)	:= bid;
+init (bid) := {TRUE, FALSE};
+next (bid) := bid;
 
 init (state) := idle;
 next (state) :=
 case
 	n.state = error			: error;	
-	state = pr & bid = FALSE	: error;
+	c.state = pr & bid = FALSE	: error;
 	c.state = pr & bid = TRUE	: pq;
 	c.state = gr			: eg;
 	c.state = epo			: eepo;
@@ -102,18 +106,25 @@ nb_decision : boolean;
 -- Identifica univocamente la transazione, evita replay attacks
 epoid : boolean;
 
--- Stati di NetBill
+-------------------------------
+-- Lista di stati di NetBill --
+-------------------------------
+
+-- idle:	 Stato iniziale (in attesa)
+-- sr_nm:	 "Signed Result" (da NetBill a mercante)
+-- error:	 Errore nella transazione
+
 state	 : {idle, sr_nm, error};
 
 ASSIGN
 
-init (nb_decision)	:= {TRUE, FALSE};
---next (nb_decision)	:= nb_decision;
+init (nb_decision) := {TRUE, FALSE};
+next (nb_decision) := nb_decision;
 
-init (epoid) 		:= {TRUE, FALSE};
---next (epoid)		:= epoid;
+init (epoid) := {TRUE, FALSE};
+next (epoid) := epoid;
 
-init (state)	  	:= idle;
+init (state) := idle;
 next (state) :=
 case
 	m.state = eepo & 
@@ -146,3 +157,6 @@ CTLSPEC EF ((m.bid = FALSE | c.cc = FALSE) -> c.state = error);
 
 -- Se NetBill segnala un errore qualsiasi, il cliente non riceve la chiave e la transazione non va a buon fine
 CTLSPEC AF ((c.state = eepo & n.nb_decision = FALSE) -> !(c.state = ok));
+
+-- Se NetBill riscontra un errore nel pagamento, il cliente non riceve la chiave per decrittare i beni (ok)
+CTLSPEC AG ((c.state = epo & n.state = error) -> AX !(c.state = ok));
