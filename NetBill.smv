@@ -138,9 +138,8 @@ n : netbill(m);
 -- Per qualsiasi cammino, alla fine la transazione termina
 CTLSPEC AG (EF (c.state = ok | c.state = error));
 
--- Se la transazione è avvenuta con successo, non può essere segnalato errore e viceversa
-CTLSPEC EF (c.state = ok <-> !(c.state = error));
-
+-- Se la transazione è avvenuta con successo, non verrà mai segnalato errore e viceversa
+CTLSPEC AG !((c.state = ok & m.state = error) & (c.state = error & m.state = sr_mc));
 
 -- Se cliente e mercante non si accordano sul prezzo o i beni non sono conformi, la transazione non va a buon fine
 CTLSPEC EF ((m.bid = FALSE | c.cc = FALSE) -> c.state = error);
