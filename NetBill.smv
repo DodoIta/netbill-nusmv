@@ -64,6 +64,11 @@ init (nb_decision)	:= {TRUE, FALSE};
 init (epoid) 		:= {TRUE, FALSE};
 init (cc)		:= {TRUE, FALSE};
 
+next (bid)		:= bid;
+next (cc)		:= cc;
+next (nb_decision)	:= nb_decision;
+next (epoid)		:= epoid;
+
 -- Cliente
 
 next (cliente) :=
@@ -105,7 +110,9 @@ esac;
 --------------------
 
 -- Per qualsiasi cammino, alla fine la transazione termina
+CTLSPEC AF (cliente = ok | cliente = error);
 CTLSPEC EF (cliente = ok | cliente = error);
+CTLSPEC EG (netbill = error -> AX mercante = error);
 
 -- Se la transazione è avvenuta con successo, non può essere segnalato errore e viceversa
 CTLSPEC EF (cliente = ok <-> !(cliente = error));
