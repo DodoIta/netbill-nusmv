@@ -48,15 +48,16 @@ state : {pr, gr, epo, ok, error};
 ASSIGN
 
 init (cc)	:= {TRUE, FALSE};
-init (state)    := pr;
+--next (cc)	:= cc;
 
+init (state)    := pr;
 next (state) :=
 case
+	m.state = error			: error;
 	state = pr & m.state = pq 	: gr;
 	m.state = eg & cc = FALSE	: error;
 	m.state = eg & cc = TRUE	: epo;
 	m.state = sr_mc			: ok;
-	m.state = error			: error;
 	TRUE 				: state;
 esac;
 
@@ -74,16 +75,17 @@ state : {idle, pq, eg, eepo, sr_mc, error};
 
 ASSIGN
 
-init (bid)   := {TRUE, FALSE};
-init (state) := idle;
+init (bid)	:= {TRUE, FALSE};
+--next (bid)	:= bid;
 
+init (state) := idle;
 next (state) :=
 case
+	n.state = error			: error;	
 	state = pr & bid = FALSE	: error;
 	c.state = pr & bid = TRUE	: pq;
 	c.state = gr			: eg;
 	c.state = epo			: eepo;
-	n.state = error			: error;
 	n.state = sr_nm			: sr_mc;
 	TRUE 				: state;
 esac;
@@ -106,9 +108,12 @@ state	 : {idle, sr_nm, error};
 ASSIGN
 
 init (nb_decision)	:= {TRUE, FALSE};
-init (epoid) 		:= {TRUE, FALSE};
-init (state)	  	:= idle;
+--next (nb_decision)	:= nb_decision;
 
+init (epoid) 		:= {TRUE, FALSE};
+--next (epoid)		:= epoid;
+
+init (state)	  	:= idle;
 next (state) :=
 case
 	m.state = eepo & 
@@ -134,13 +139,11 @@ n : netbill(m);
 CTLSPEC AG (EF (c.state = ok | c.state = error));
 
 -- Se la transazione è avvenuta con successo, non può essere segnalato errore e viceversa
---CTLSPEC EF (cliente = ok <-> !(cliente = error));
+CTLSPEC EF (c.state = ok <-> !(c.state = error));
 
--- Se Netbill o il mercante segnalano un qualsiasi errore, la transazione non andrà mai a buon fine
--- AF ((netbill = error | mercante = error) -> cliente = error);
 
--- Se cliente e mercante non si accordano sul prezzo, la transazione non va a buon fine
---CTLSPEC EF ((bid = FALSE | nb_decision = FALSE | cc = FALSE) -> cliente = error);
+-- Se cliente e mercante non si accordano sul prezzo o i beni non sono conformi, la transazione non va a buon fine
+CTLSPEC EF ((m.bid = FALSE | c.cc = FALSE) -> c.state = error);
 
 -- Se NetBill segnala un errore qualsiasi, il cliente non riceve la chiave e la transazione non va a buon fine
---CTLSPEC AF ((cliente = eepo & nb_decision = FALSE) -> !(cliente = ok));
+CTLSPEC AF ((c.state = eepo & n.nb_decision = FALSE) -> !(c.state = ok));
