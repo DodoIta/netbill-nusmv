@@ -52,12 +52,12 @@ init (state)    := pr;
 
 next (state) :=
 case
-	state = pr & m = pq 	: gr;
-	m = eg & cc = FALSE	: error;
-	m = eg & cc = TRUE	: epo;
-	m = sr_mc		: ok;
-	m = error		: error;
-	TRUE 			: state;
+	state = pr & m.state = pq 	: gr;
+	m.state = eg & cc = FALSE	: error;
+	m.state = eg & cc = TRUE	: epo;
+	m.state = sr_mc			: ok;
+	m.state = error			: error;
+	TRUE 				: state;
 esac;
 
 -- Mercante
@@ -80,11 +80,11 @@ init (state) := idle;
 next (state) :=
 case
 	state = pr & bid = FALSE	: error;
-	c = pr & bid = TRUE		: pq;
-	c = gr				: eg;
-	c = epo				: eepo;
-	n = error			: error;
-	n = sr_nm			: sr_mc;
+	c.state = pr & bid = TRUE	: pq;
+	c.state = gr			: eg;
+	c.state = epo			: eepo;
+	n.state = error			: error;
+	n.state = sr_nm			: sr_mc;
 	TRUE 				: state;
 esac;
 
@@ -111,9 +111,9 @@ init (state)	  	:= idle;
 
 next (state) :=
 case
-	m = eepo & 
+	m.state = eepo & 
 		(epoid = FALSE | nb_decision = FALSE) 	: error;
-	m = eepo & 
+	m.state = eepo & 
 		(epoid = TRUE & nb_decision = TRUE)	: sr_nm;
 	TRUE 						: state;
 esac;
@@ -122,9 +122,9 @@ MODULE main
 
 VAR
 
-c : cliente (m);
-m : mercante (c, n);
-n : netbill (m);
+c : cliente(m);
+m : mercante(c, n);
+n : netbill(m);
 
 --------------------
 -- Model Checking --
