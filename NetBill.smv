@@ -42,7 +42,6 @@ state : {pr, gr, epo, ok, error};
 ASSIGN
 
 init (cc) := {TRUE, FALSE};
-next (cc) := cc;
 
 init (state) := pr;
 next (state) :=
@@ -80,7 +79,6 @@ state : {idle, pq, eg, eepo, sr_mc, error};
 ASSIGN
 
 init (bid) := {TRUE, FALSE};
-next (bid) := bid;
 
 init (state) := idle;
 next (state) :=
@@ -103,9 +101,6 @@ VAR
 -- Decisione di NetBill sulla transazione
 nb_decision : boolean;
 
--- Identifica univocamente la transazione, evita replay attacks
-epoid : boolean;
-
 -------------------------------
 -- Lista di stati di NetBill --
 -------------------------------
@@ -119,19 +114,13 @@ state	 : {idle, sr_nm, error};
 ASSIGN
 
 init (nb_decision) := {TRUE, FALSE};
-next (nb_decision) := nb_decision;
-
-init (epoid) := {TRUE, FALSE};
-next (epoid) := epoid;
 
 init (state) := idle;
 next (state) :=
 case
-	m.state = eepo & 
-		(epoid = FALSE | nb_decision = FALSE) 	: error;
-	m.state = eepo & 
-		(epoid = TRUE & nb_decision = TRUE)	: sr_nm;
-	TRUE 						: state;
+	m.state = eepo & nb_decision = FALSE 	: error;
+	m.state = eepo & nb_decision = TRUE	: sr_nm;
+	TRUE 					: state;
 esac;
 
 MODULE main
@@ -156,7 +145,7 @@ CTLSPEC AG !((c.state = ok & m.state = error) & (c.state = error & m.state = sr_
 CTLSPEC EF ((m.bid = FALSE | c.cc = FALSE) -> c.state = error);
 
 -- Se NetBill segnala un errore qualsiasi, il cliente non riceve la chiave e la transazione non va a buon fine
-CTLSPEC AF ((c.state = eepo & n.nb_decision = FALSE) -> !(c.state = ok));
+CTLSPEC AF ((n.nb_decision = FALSE) -> !(c.state = ok));
 
 -- Se NetBill riscontra un errore nel pagamento, il cliente non riceve la chiave per decrittare i beni (ok)
 CTLSPEC AG ((c.state = epo & n.state = error) -> AX !(c.state = ok));
