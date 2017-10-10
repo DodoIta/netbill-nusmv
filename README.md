@@ -1,4 +1,9 @@
+### Progetto MVSS
+
+Model checking del protocollo NetBill effettuato utilizzando il software NuSMV.
+
+----
+
 ### MVSS project
 
-Progetto modellazione 2016
-Davide Cortellucci
+Model checking of the NetBill transaction protocol using NuSMV.
